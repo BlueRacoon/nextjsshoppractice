@@ -24,8 +24,10 @@ import {
 } from "../redux/shoppersSlice";
 import { loadStripe } from "@stripe/stripe-js";
 import axios from "axios";
+import { useSession } from "next-auth/react";
 
 const CartPageComponent = () => {
+  const { data: session } = useSession();
   const dispatch = useDispatch();
   const stripePromise = loadStripe(process.env.stripe_public_key);
   const productData = useSelector((state: any) => state.shopper.productData);
@@ -56,12 +58,20 @@ const CartPageComponent = () => {
 
   const handleCheckout = async () => {
     const stripe = await stripePromise;
+    const stipreAmt = parseFloat((totalAmt * 100).toFixed(2));
 
     // create a checkout session
     const checkoutSession = await axios.post("api/create-checkout-session", {
       items: productData,
-      email: session?.user.email,
+      email: session?.user?.email,
     });
+    // redirect user to stripe checkout
+    const result: any = await stripe?.redirectToCheckout({
+      sessionId: checkoutSession.data.id,
+    });
+    if (result?.error) {
+      alert(result?.error.message);
+    }
   };
 
   return (
